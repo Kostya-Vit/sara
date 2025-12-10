@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="uk">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Хост | Трансляція</title>
+		<style>
+			/* === ВАШ РАБОЧИЙ КОД С ДОБАВЛЕННЫМ СТИЛЕМ === */
+
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
+
+			body {
+				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+				background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+				color: white;
+				min-height: 100vh;
+			}
+
+			.container {
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 2rem;
+			}
+
+			h1 {
+				text-align: center;
+				margin-bottom: 2rem;
+				color: #3b82f6;
+				font-size: 2.5rem;
+			}
+
+			#setup {
+				background: rgba(255, 255, 255, 0.05);
+				border: 1px solid rgba(255, 255, 255, 0.1);
+				border-radius: 12px;
+				padding: 2rem;
+				margin-bottom: 2rem;
+				text-align: center;
+			}
+
+			#room-id-input {
+				width: 100%;
+				padding: 1rem;
+				font-size: 1.1rem;
+				margin-bottom: 1rem;
+				background: rgba(255, 255, 255, 0.1);
+				border: 1px solid rgba(255, 255, 255, 0.2);
+				border-radius: 8px;
+				color: white;
+			}
+
+			button {
+				padding: 1rem 2rem;
+				background: linear-gradient(135deg, #3b82f6, #2563eb);
+				color: white;
+				border: none;
+				border-radius: 8px;
+				font-size: 1.1rem;
+				font-weight: 600;
+				cursor: pointer;
+				transition: all 0.3s ease;
+			}
+
+			button:hover {
+				transform: translateY(-2px);
+				box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+			}
+
+			#room-info {
+				background: rgba(16, 185, 129, 0.1);
+				border: 1px solid rgba(16, 185, 129, 0.2);
+				border-radius: 12px;
+				padding: 1.5rem;
+				margin-bottom: 2rem;
+			}
+
+			.room-interface {
+				display: none;
+				gap: 2rem;
+			}
+
+			#video-area {
+				flex: 2;
+				background: rgba(255, 255, 255, 0.05);
+				border-radius: 12px;
+				padding: 1.5rem;
+			}
+
+			#local-video {
+				width: 100%;
+				height: 500px;
+				background: #0f172a;
+				border-radius: 8px;
+				object-fit: contain;
+			}
+
+			#chat-interface {
+				flex: 1;
+				background: rgba(255, 255, 255, 0.05);
+				border-radius: 12px;
+				padding: 1.5rem;
+				display: flex;
+				flex-direction: column;
+			}
+
+			#messages {
+				flex: 1;
+				overflow-y: auto;
+				margin-bottom: 1rem;
+				padding: 1rem;
+				background: rgba(255, 255, 255, 0.05);
+				border-radius: 8px;
+				min-height: 300px;
+			}
+
+			.message {
+				padding: 0.75rem 1rem;
+				margin-bottom: 0.75rem;
+				border-radius: 8px;
+				max-width: 80%;
+			}
+
+			.message.local {
+				background: rgba(16, 185, 129, 0.2);
+				border: 1px solid rgba(16, 185, 129, 0.3);
+				margin-left: auto;
+			}
+
+			.message.remote {
+				background: rgba(59, 130, 246, 0.2);
+				border: 1px solid rgba(59, 130, 246, 0.3);
+			}
+
+			#chat-input-area {
+				display: flex;
+				gap: 0.5rem;
+			}
+
+			#chat-input {
+				flex: 1;
+				padding: 0.75rem;
+				background: rgba(255, 255, 255, 0.1);
+				border: 1px solid rgba(255, 255, 255, 0.2);
+				border-radius: 8px;
+				color: white;
+			}
+
+			/* === КОНЕЦ СТИЛЕЙ === */
+		</style>
+	</head>
+	<body>
+		<!-- ВАШ РАБОЧИЙ HTML БЕЗ ИЗМЕНЕНИЙ -->
+		<div class="container" id="control-area">
+			<h1>Хост: Трансляція Екрана та Чат</h1>
+
+			<div id="setup">
+				<input
+					type="text"
+					id="room-id-input"
+					placeholder="Введіть ID кімнати (напр., DEV101)"
+				/>
+				<button onclick="startHost()">Створити Кімнату та Почати Трансляцію</button>
+			</div>
+
+			<div id="room-info" style="display: none">
+				<p>Статус: <strong id="status">Очікування учасників...</strong></p>
+				<p>ID Кімнати: <strong id="display-room-id"></strong></p>
+			</div>
+		</div>
+
+		<div class="container room-interface" style="display: none" id="room-area">
+			<div id="video-area">
+				<h2>Ваша Трансляція (Локальний перегляд)</h2>
+				<video id="local-video" autoplay muted playsinline></video>
+			</div>
+
+			<div id="chat-interface">
+				<h2>Чат Кімнати</h2>
+				<div id="messages"></div>
+				<div id="chat-input-area">
+					<input
+						type="text"
+						id="chat-input"
+						placeholder="Ваше повідомлення..."
+						onkeyup="if(event.key === 'Enter') sendMessage()"
+					/>
+					<button onclick="sendMessage()">Надіслати</button>
+				</div>
+			</div>
+		</div>
+
+		<script src="/socket.io/socket.io.js"></script>
+		<script>
+			// === ВАШ РАБОЧИЙ JAVASCRIPT БЕЗ ИЗМЕНЕНИЙ ===
+
+			const configuration = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+			const socket = io();
+			let ROOM_ID;
+			const participantConnections = new Map();
+
+			function sendMessage() {
+				const messageInput = document.getElementById("chat-input");
+				const message = messageInput.value.trim();
+				if (message === "") return;
+
+				participantConnections.forEach((pc) => {
+					const dc = pc.channels.get("chat");
+					if (dc && dc.readyState === "open") {
+						dc.send(JSON.stringify({ type: "chat", message, sender: "Host" }));
+					}
+				});
+
+				displayMessage(message, "local", "Я");
+				messageInput.value = "";
+			}
+
+			function displayMessage(text, type, sender = "Учасник") {
+				const messagesDiv = document.getElementById("messages");
+				const msg = document.createElement("div");
+				msg.className = `message ${type}`;
+				msg.textContent = `${sender}: ${text}`;
+				messagesDiv.appendChild(msg);
+				messagesDiv.scrollTop = messagesDiv.scrollHeight;
+			}
+
+			async function createPeerConnection(participantId, stream) {
+				const pc = new RTCPeerConnection(configuration);
+				participantConnections.set(participantId, pc);
+
+				stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+
+				const dataChannel = pc.createDataChannel("chat");
+				pc.channels = new Map([[dataChannel.label, dataChannel]]);
+				dataChannel.onopen = () => console.log(`DataChannel to ${participantId} opened.`);
+				dataChannel.onmessage = (event) => {
+					const data = JSON.parse(event.data);
+					if (data.type === "chat") {
+						displayMessage(data.message, "remote", "Учасник");
+					}
+				};
+
+				pc.onicecandidate = ({ candidate }) => {
+					if (candidate) {
+						socket.emit("signal", {
+							roomId: ROOM_ID,
+							targetId: participantId,
+							signalType: "ice",
+							data: candidate,
+						});
+					}
+				};
+
+				const offer = await pc.createOffer();
+				await pc.setLocalDescription(offer);
+
+				socket.emit("signal", {
+					roomId: ROOM_ID,
+					targetId: participantId,
+					signalType: "sdp",
+					data: pc.localDescription,
+				});
+
+				return pc;
+			}
+
+			async function handleSignal(data) {
+				const { senderId, signalType, data: signalData } = data;
+				const pc = participantConnections.get(senderId);
+
+				if (!pc) return;
+
+				if (signalType === "sdp" && signalData.type === "answer") {
+					await pc.setRemoteDescription(new RTCSessionDescription(signalData));
+					document.getElementById("status").textContent = `Учасник ${senderId.substring(
+						0,
+						4
+					)}... підключився!`;
+				} else if (signalType === "ice") {
+					await pc.addIceCandidate(new RTCIceCandidate(signalData));
+				}
+			}
+
+			async function startHost() {
+				ROOM_ID = document.getElementById("room-id-input").value.trim();
+				if (!ROOM_ID) {
+					alert("Будь ласка, введіть ID кімнати.");
+					return;
+				}
+
+				try {
+					const stream = await navigator.mediaDevices.getDisplayMedia({
+						video: true,
+						audio: true,
+					});
+					document.getElementById("local-video").srcObject = stream;
+
+					socket.emit("create_room", ROOM_ID);
+
+					socket.on("participant_joined", async ({ participantId }) => {
+						await createPeerConnection(participantId, stream);
+						document.getElementById(
+							"status"
+						).textContent = `Очікування відповіді від ${participantId.substring(
+							0,
+							4
+						)}...`;
+					});
+
+					document.getElementById("setup").style.display = "none";
+					document.getElementById("room-area").style.display = "flex";
+					document.getElementById("room-info").style.display = "block";
+					document.getElementById("display-room-id").textContent = ROOM_ID;
+					document.getElementById("status").textContent =
+						"Кімната створена. Початок трансляції...";
+				} catch (error) {
+					console.error("Помилка початку трансляції:", error);
+					alert(
+						"Не вдалося отримати доступ до екрана. Переконайтеся, що ви працюєте на localhost або HTTPS. " +
+							error.name
+					);
+				}
+			}
+
+			socket.on("connect", () => console.log("Connected to signaling server."));
+			socket.on("room_error", (msg) => alert(`Помилка кімнати: ${msg}`));
+			socket.on("room_ready", () => console.log("Room setup successful."));
+			socket.on("signal", handleSignal);
+
+			// === КОНЕЦ ВАШЕГО РАБОЧЕГО КОДА ===
+		</script>
+	</body>
+</html>

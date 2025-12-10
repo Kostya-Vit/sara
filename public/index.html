@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="uk">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>WebRTC Трансляція</title>
+		<style>
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
+
+			body {
+				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+				background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+				color: white;
+				min-height: 100vh;
+				display: flex;
+				justify-content: center;
+				align-items: center;
+				padding: 2rem;
+			}
+
+			.main-container {
+				max-width: 800px;
+				width: 100%;
+				text-align: center;
+			}
+
+			h1 {
+				font-size: 3rem;
+				margin-bottom: 1rem;
+				background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+				-webkit-background-clip: text;
+				-webkit-text-fill-color: transparent;
+			}
+
+			.subtitle {
+				color: #94a3b8;
+				font-size: 1.2rem;
+				margin-bottom: 3rem;
+			}
+
+			.cards {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+				gap: 2rem;
+				margin-bottom: 3rem;
+			}
+
+			.card {
+				background: rgba(255, 255, 255, 0.05);
+				border: 1px solid rgba(255, 255, 255, 0.1);
+				border-radius: 16px;
+				padding: 2rem;
+				transition: all 0.3s ease;
+			}
+
+			.card:hover {
+				transform: translateY(-5px);
+				background: rgba(255, 255, 255, 0.1);
+				box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+			}
+
+			.card-icon {
+				width: 80px;
+				height: 80px;
+				background: linear-gradient(135deg, #3b82f6, #2563eb);
+				border-radius: 50%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				margin: 0 auto 1.5rem;
+				font-size: 2rem;
+			}
+
+			.card h3 {
+				font-size: 1.5rem;
+				margin-bottom: 1rem;
+			}
+
+			.card p {
+				color: #94a3b8;
+				margin-bottom: 1.5rem;
+			}
+
+			.btn {
+				display: inline-block;
+				padding: 1rem 2rem;
+				background: linear-gradient(135deg, #3b82f6, #2563eb);
+				color: white;
+				text-decoration: none;
+				border-radius: 8px;
+				font-weight: 600;
+				transition: all 0.3s ease;
+			}
+
+			.btn:hover {
+				transform: translateY(-2px);
+				box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+			}
+
+			.btn-secondary {
+				background: rgba(255, 255, 255, 0.1);
+				border: 1px solid rgba(255, 255, 255, 0.2);
+			}
+
+			.features {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+				gap: 2rem;
+				margin-top: 3rem;
+			}
+
+			.feature {
+				text-align: center;
+				padding: 1.5rem;
+			}
+
+			.feature i {
+				font-size: 2.5rem;
+				margin-bottom: 1rem;
+				color: #3b82f6;
+			}
+		</style>
+		<link
+			rel="stylesheet"
+			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+		/>
+	</head>
+	<body>
+		<div class="main-container">
+			<h1><i class="fas fa-broadcast-tower"></i> WebRTC Трансляція</h1>
+			<p class="subtitle">
+				Легка платформа для трансляцій екрана та спілкування в реальному часі
+			</p>
+
+			<div class="cards">
+				<div class="card">
+					<div class="card-icon">
+						<i class="fas fa-crown"></i>
+					</div>
+					<h3>Хост трансляції</h3>
+					<p>Створіть кімнату та транcлюйте свій екран з чатом</p>
+					<a href="/host.html" class="btn">
+						<i class="fas fa-play"></i> Почати трансляцію
+					</a>
+				</div>
+
+				<div class="card">
+					<div class="card-icon">
+						<i class="fas fa-eye"></i>
+					</div>
+					<h3>Перегляд трансляції</h3>
+					<p>Приєднуйтесь до кімнати та дивіться трансляцію з чатом</p>
+					<a href="/client.html" class="btn">
+						<i class="fas fa-video"></i> Дивитись трансляцію
+					</a>
+				</div>
+			</div>
+
+			<div class="features">
+				<div class="feature">
+					<i class="fas fa-bolt"></i>
+					<h4>Миттєвий зв'язок</h4>
+					<p>WebRTC для швидкої трансляції</p>
+				</div>
+				<div class="feature">
+					<i class="fas fa-comments"></i>
+					<h4>Чат в реальному часі</h4>
+					<p>Спілкуйтесь під час трансляції</p>
+				</div>
+				<div class="feature">
+					<i class="fas fa-shield-alt"></i>
+					<h4>Без налаштувань</h4>
+					<p>Просто відкрийте посилання</p>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

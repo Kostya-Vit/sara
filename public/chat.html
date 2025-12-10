@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Только чат | StreamCast</title>
+		<link rel="stylesheet" href="style.css" />
+		<link
+			rel="stylesheet"
+			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+		/>
+		<link
+			href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+	</head>
+	<body>
+		<div class="room-container">
+			<!-- Заголовок комнаты -->
+			<header class="room-header">
+				<div class="room-header-content">
+					<div class="room-title">
+						<i class="fas fa-comment"></i>
+						<h1>Только чат</h1>
+					</div>
+					<div class="room-id-display" id="roomIdDisplay">Загрузка...</div>
+					<div class="room-stats">
+						<i class="fas fa-users"></i>
+						<span id="participantCount">Подключение...</span>
+					</div>
+					<div>
+						<a href="/" class="btn btn-secondary">
+							<i class="fas fa-home"></i> Главная
+						</a>
+						<a href="#" id="viewerLink" class="btn btn-secondary">
+							<i class="fas fa-video"></i> Смотреть трансляцию
+						</a>
+					</div>
+				</div>
+			</header>
+
+			<!-- Основное содержимое -->
+			<main class="room-main" style="grid-template-columns: 1fr">
+				<!-- Чат -->
+				<section class="chat-section">
+					<div class="chat-header">
+						<h3><i class="fas fa-comments"></i> Чат трансляции</h3>
+						<div class="chat-info">
+							<span id="chatStatus">Подключение...</span>
+						</div>
+					</div>
+
+					<div class="chat-messages" id="chatMessages">
+						<div class="message system">
+							<i class="fas fa-spinner fa-spin"></i> Подключение к чату...
+						</div>
+					</div>
+
+					<div class="chat-input-area">
+						<input
+							type="text"
+							id="usernameInput"
+							class="chat-input"
+							placeholder="Ваше имя"
+							value="Участник"
+							maxlength="20"
+						/>
+						<input
+							type="text"
+							id="chatInput"
+							class="chat-input"
+							placeholder="Напишите сообщение..."
+							maxlength="500"
+						/>
+						<button onclick="sendMessage()" class="btn btn-primary">
+							<i class="fas fa-paper-plane"></i>
+						</button>
+					</div>
+				</section>
+			</main>
+		</div>
+
+		<script src="/socket.io/socket.io.js"></script>
+		<script>
+			const urlParams = new URLSearchParams(window.location.search);
+			const roomId = urlParams.get("room");
+			const username = urlParams.get("username") || "Участник";
+
+			let socket = null;
+			let participantCount = 0;
+
+			// Инициализация
+			async function init() {
+				if (!roomId) {
+					showError("Неверная ссылка");
+					setTimeout(() => (window.location.href = "/"), 2000);
+					return;
+				}
+
+				document.getElementById("roomIdDisplay").textContent = roomId;
+				document.getElementById(
+					"viewerLink"
+				).href = `/viewer.html?room=${roomId}&username=${username}`;
+
+				connectWebSocket();
+				setupEventListeners();
+			}
+
+			// Подключение WebSocket
+			function connectWebSocket() {
+				socket = io();
+
+				socket.on("connect", () => {
+					console.log("✅ Подключено к серверу");
+					updateChatStatus("Подключение к чату...");
+
+					// Присоединяемся к комнате
+					socket.emit("join_room", {
+						roomId: roomId,
+						username: username,
+						isViewer: true,
+					});
+				});
+
+				socket.on("room_joined", (data) => {
+					console.log("✅ Присоединились к комнате:", data);
+					participantCount = data.participantCount;
+					updateParticipantCount();
+					updateChatStatus("Подключено");
+					addChatMessage("Вы подключились к чату", "system");
+				});
+
+				socket.on("participant_joined", (data) => {
+					console.log("👥 Новый участник:", data);
+					participantCount = data.participantCount;
+					updateParticipantCount();
+					addChatMessage(`${data.username} присоединился`, "system");
+				});
+
+				socket.on("participant_left", (data) => {
+					console.log("👋 Участник вышел:", data);
+					participantCount = data.participantCount;
+					updateParticipantCount();
+					addChatMessage(`${data.username} вышел`, "system");
+				});
+
+				socket.on("chat_message", (message) => {
+					if (message.type === "message") {
+						addChatMessage(message.message, "remote", message.username);
+					} else if (message.type === "system") {
+						addChatMessage(message.message, "system");
+					}
+				});
+
+				socket.on("chat_history", (data) => {
+					data.messages.forEach((msg) => {
+						if (msg.type === "message") {
+							addChatMessage(msg.message, "remote", msg.username);
+						}
+					});
+				});
+
+				socket.on("host_disconnected", () => {
+					showError("Хост отключился");
+					updateChatStatus("Хост отключился", "error");
+				});
+
+				socket.on("disconnect", () => {
+					updateChatStatus("Соединение потеряно", "error");
+				});
+			}
+
+			// Отправка сообщения
+			function sendMessage() {
+				const input = document.getElementById("chatInput");
+				const usernameInput = document.getElementById("usernameInput");
+				const message = input.value.trim();
+				const currentUsername = usernameInput.value.trim() || "Участник";
+
+				if (!message || !socket) return;
+
+				socket.emit("chat_message", {
+					roomId: roomId,
+					message: message,
+				});
+
+				addChatMessage(message, "local", currentUsername);
+				input.value = "";
+				input.focus();
+			}
+
+			// Добавить сообщение в чат
+			function addChatMessage(text, type, sender = "Система") {
+				const messagesDiv = document.getElementById("chatMessages");
+				const messageDiv = document.createElement("div");
+
+				messageDiv.className = `message ${type}`;
+
+				const time = new Date().toLocaleTimeString([], {
+					hour: "2-digit",
+					minute: "2-digit",
+				});
+
+				if (type === "system") {
+					messageDiv.innerHTML = `
+                    <div class="message-text">${text}</div>
+                    <div class="message-time">${time}</div>
+                `;
+				} else {
+					messageDiv.innerHTML = `
+                    <div class="message-sender">${sender}</div>
+                    <div class="message-text">${text}</div>
+                    <div class="message-time">${time}</div>
+                `;
+				}
+
+				messagesDiv.appendChild(messageDiv);
+				messagesDiv.scrollTop = messagesDiv.scrollHeight;
+			}
+
+			// Обновить количество участников
+			function updateParticipantCount() {
+				const text =
+					participantCount === 1 ? "1 участник" : `${participantCount} участников`;
+				document.getElementById("participantCount").textContent = text;
+			}
+
+			// Обновить статус чата
+			function updateChatStatus(status, type = "info") {
+				const statusElement = document.getElementById("chatStatus");
+				statusElement.textContent = status;
+				statusElement.className = type;
+			}
+
+			// Показать сообщение об ошибке
+			function showError(message) {
+				addChatMessage(message, "system error");
+			}
+
+			// Настройка обработчиков событий
+			function setupEventListeners() {
+				// Ввод сообщения по Enter
+				document.getElementById("chatInput").addEventListener("keypress", (e) => {
+					if (e.key === "Enter") {
+						sendMessage();
+					}
+				});
+
+				// Имя пользователя по умолчанию
+				document.getElementById("usernameInput").addEventListener("change", function () {
+					if (!this.value.trim()) {
+						this.value = "Участник";
+					}
+				});
+
+				// Обработка закрытия страницы
+				window.addEventListener("beforeunload", () => {
+					if (socket) socket.disconnect();
+				});
+			}
+
+			// Запуск при загрузке
+			window.addEventListener("load", init);
+
+			// Дополнительные стили
+			const style = document.createElement("style");
+			style.textContent = `
+            .chat-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .chat-info {
+                font-size: 0.9rem;
+                color: var(--gray);
+            }
+            
+            #chatStatus.success {
+                color: #10b981;
+            }
+            
+            #chatStatus.error {
+                color: #ef4444;
+            }
+            
+            #chatStatus.info {
+                color: #6366f1;
+            }
+            
+            .message.system.error {
+                background: rgba(239, 68, 68, 0.2);
+                border-color: rgba(239, 68, 68, 0.3);
+                color: #ef4444;
+            }
+            
+            .chat-input-area {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            @media (max-width: 768px) {
+                .chat-header {
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 0.5rem;
+                }
+            }
+        `;
+			document.head.appendChild(style);
+		</script>
+	</body>
+</html>
