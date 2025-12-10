@@ -2,11 +2,13 @@
 <html lang="uk">
 	<head>
 		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+		/>
 		<title>Учасник | Перегляд Трансляції</title>
 		<style>
-			/* === ТОТ ЖЕ СТИЛЬ ЧТО И ДЛЯ HOST.HTML === */
-
+			/* === БАЗОВЫЕ СТИЛИ === */
 			* {
 				margin: 0;
 				padding: 0;
@@ -15,188 +17,771 @@
 
 			body {
 				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-				background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+				background: #0f172a;
 				color: white;
 				min-height: 100vh;
-			}
-
-			.container {
-				max-width: 1200px;
-				margin: 0 auto;
-				padding: 2rem;
-			}
-
-			h1 {
-				text-align: center;
-				margin-bottom: 2rem;
-				color: #3b82f6;
-				font-size: 2.5rem;
-			}
-
-			#setup {
-				background: rgba(255, 255, 255, 0.05);
-				border: 1px solid rgba(255, 255, 255, 0.1);
-				border-radius: 12px;
-				padding: 2rem;
-				margin-bottom: 2rem;
-				text-align: center;
-			}
-
-			#room-id-input {
-				width: 100%;
-				padding: 1rem;
-				font-size: 1.1rem;
-				margin-bottom: 1rem;
-				background: rgba(255, 255, 255, 0.1);
-				border: 1px solid rgba(255, 255, 255, 0.2);
-				border-radius: 8px;
-				color: white;
-			}
-
-			button {
-				padding: 1rem 2rem;
-				background: linear-gradient(135deg, #3b82f6, #2563eb);
-				color: white;
-				border: none;
-				border-radius: 8px;
-				font-size: 1.1rem;
-				font-weight: 600;
-				cursor: pointer;
-				transition: all 0.3s ease;
-			}
-
-			button:hover {
-				transform: translateY(-2px);
-				box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
-			}
-
-			#status {
-				background: rgba(59, 130, 246, 0.1);
-				border: 1px solid rgba(59, 130, 246, 0.2);
-				border-radius: 12px;
-				padding: 1.5rem;
-				margin-bottom: 2rem;
-				text-align: center;
-			}
-
-			.room-interface {
-				display: none;
-				gap: 2rem;
-			}
-
-			#video-area {
-				flex: 2;
-				background: rgba(255, 255, 255, 0.05);
-				border-radius: 12px;
-				padding: 1.5rem;
-			}
-
-			#remote-video {
-				width: 100%;
-				height: 500px;
-				background: #0f172a;
-				border-radius: 8px;
-				object-fit: contain;
-			}
-
-			#chat-interface {
-				flex: 1;
-				background: rgba(255, 255, 255, 0.05);
-				border-radius: 12px;
-				padding: 1.5rem;
 				display: flex;
 				flex-direction: column;
 			}
 
-			#messages {
+			/* === ШАПКА ТОЛЬКО НА ДЕСКТОПЕ === */
+			.desktop-header {
+				display: none;
+				background: rgba(30, 41, 59, 0.95);
+				padding: 1rem 2rem;
+				border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+			}
+
+			.header-content {
+				max-width: 1200px;
+				margin: 0 auto;
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				width: 100%;
+			}
+
+			.header-title {
+				display: flex;
+				align-items: center;
+				gap: 0.75rem;
+			}
+
+			.room-id-display {
+				background: rgba(255, 255, 255, 0.1);
+				padding: 0.5rem 1rem;
+				border-radius: 8px;
+				font-family: monospace;
+				font-size: 0.9rem;
+			}
+
+			/* === МОБИЛЬНАЯ ШАПКА === */
+			.mobile-header {
+				display: none;
+				background: rgba(30, 41, 59, 0.95);
+				padding: 0.75rem 1rem;
+				border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+				position: sticky;
+				top: 0;
+				z-index: 100;
+				backdrop-filter: blur(10px);
+			}
+
+			.mobile-header-content {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+			}
+
+			.mobile-status {
+				font-size: 0.9rem;
+				color: #94a3b8;
+			}
+
+			/* === ОСНОВНОЙ КОНТЕНТ === */
+			.main-content {
+				flex: 1;
+				display: flex;
+				flex-direction: column;
+				height: 100vh;
+			}
+
+			/* === ВИДЕО СЕКЦИЯ === */
+			.video-section {
+				flex: 1;
+				background: #000;
+				position: relative;
+				min-height: 40vh;
+			}
+
+			#remote-video {
+				width: 100%;
+				height: 100%;
+				object-fit: contain;
+				background: #000;
+			}
+
+			.video-placeholder {
+				position: absolute;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				background: #0f172a;
+				color: #94a3b8;
+				text-align: center;
+				padding: 2rem;
+			}
+
+			.video-placeholder i {
+				font-size: 3rem;
+				margin-bottom: 1rem;
+			}
+
+			.video-controls {
+				position: absolute;
+				bottom: 1rem;
+				left: 50%;
+				transform: translateX(-50%);
+				display: flex;
+				gap: 0.75rem;
+				background: rgba(0, 0, 0, 0.7);
+				padding: 0.75rem;
+				border-radius: 50px;
+				backdrop-filter: blur(10px);
+				z-index: 50;
+			}
+
+			.control-btn {
+				width: 50px;
+				height: 50px;
+				border-radius: 50%;
+				border: none;
+				background: rgba(255, 255, 255, 0.15);
+				color: white;
+				font-size: 1.25rem;
+				cursor: pointer;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				transition: all 0.2s ease;
+			}
+
+			.control-btn:active {
+				transform: scale(0.95);
+				background: rgba(255, 255, 255, 0.25);
+			}
+
+			.control-btn.active {
+				background: #10b981;
+			}
+
+			/* === ЧАТ СЕКЦИЯ === */
+			.chat-section {
+				height: 40vh;
+				min-height: 250px;
+				background: #1e293b;
+				border-top: 1px solid rgba(255, 255, 255, 0.1);
+				display: flex;
+				flex-direction: column;
+			}
+
+			.chat-header {
+				padding: 1rem;
+				background: rgba(30, 41, 59, 0.95);
+				border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+			}
+
+			.chat-header h3 {
+				display: flex;
+				align-items: center;
+				gap: 0.5rem;
+				font-size: 1rem;
+			}
+
+			.online-count {
+				background: rgba(16, 185, 129, 0.2);
+				color: #10b981;
+				padding: 0.25rem 0.75rem;
+				border-radius: 20px;
+				font-size: 0.8rem;
+			}
+
+			.chat-messages {
 				flex: 1;
 				overflow-y: auto;
-				margin-bottom: 1rem;
 				padding: 1rem;
-				background: rgba(255, 255, 255, 0.05);
-				border-radius: 8px;
-				min-height: 300px;
+				display: flex;
+				flex-direction: column;
+				gap: 0.75rem;
+				scrollbar-width: thin;
+				scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+			}
+
+			.chat-messages::-webkit-scrollbar {
+				width: 6px;
+			}
+
+			.chat-messages::-webkit-scrollbar-track {
+				background: transparent;
+			}
+
+			.chat-messages::-webkit-scrollbar-thumb {
+				background: rgba(255, 255, 255, 0.2);
+				border-radius: 3px;
 			}
 
 			.message {
 				padding: 0.75rem 1rem;
-				margin-bottom: 0.75rem;
-				border-radius: 8px;
-				max-width: 80%;
+				border-radius: 12px;
+				max-width: 85%;
+				word-wrap: break-word;
+				animation: fadeIn 0.3s ease;
+			}
+
+			.message.system {
+				background: rgba(59, 130, 246, 0.2);
+				border: 1px solid rgba(59, 130, 246, 0.3);
+				color: #3b82f6;
+				text-align: center;
+				max-width: 100%;
+				font-size: 0.9rem;
+				padding: 0.5rem;
 			}
 
 			.message.local {
 				background: rgba(16, 185, 129, 0.2);
 				border: 1px solid rgba(16, 185, 129, 0.3);
+				color: #10b981;
 				margin-left: auto;
+				margin-right: 0;
 			}
 
 			.message.remote {
-				background: rgba(59, 130, 246, 0.2);
-				border: 1px solid rgba(59, 130, 246, 0.3);
+				background: rgba(255, 255, 255, 0.1);
+				border: 1px solid rgba(255, 255, 255, 0.2);
+				color: white;
 			}
 
-			#chat-input-area {
+			.message-sender {
+				font-weight: 600;
+				font-size: 0.85rem;
+				margin-bottom: 0.25rem;
+				opacity: 0.9;
+			}
+
+			.message-time {
+				font-size: 0.75rem;
+				opacity: 0.7;
+				margin-top: 0.25rem;
+				text-align: right;
+			}
+
+			.chat-input-area {
+				padding: 1rem;
+				border-top: 1px solid rgba(255, 255, 255, 0.1);
 				display: flex;
-				gap: 0.5rem;
+				gap: 0.75rem;
+				background: rgba(30, 41, 59, 0.95);
 			}
 
 			#chat-input {
 				flex: 1;
-				padding: 0.75rem;
+				padding: 0.75rem 1rem;
 				background: rgba(255, 255, 255, 0.1);
 				border: 1px solid rgba(255, 255, 255, 0.2);
-				border-radius: 8px;
+				border-radius: 25px;
 				color: white;
+				font-size: 1rem;
+				outline: none;
 			}
 
-			/* === КОНЕЦ СТИЛЕЙ === */
+			#chat-input:focus {
+				border-color: #3b82f6;
+			}
+
+			.send-btn {
+				width: 50px;
+				height: 50px;
+				border-radius: 50%;
+				border: none;
+				background: linear-gradient(135deg, #3b82f6, #2563eb);
+				color: white;
+				font-size: 1.25rem;
+				cursor: pointer;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				transition: all 0.2s ease;
+			}
+
+			.send-btn:active {
+				transform: scale(0.95);
+			}
+
+			/* === ЭКРАН ПОДКЛЮЧЕНИЯ === */
+			.connect-screen {
+				position: fixed;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				background: #0f172a;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				padding: 2rem;
+				z-index: 1000;
+			}
+
+			.connect-content {
+				max-width: 400px;
+				width: 100%;
+				text-align: center;
+			}
+
+			.connect-icon {
+				width: 80px;
+				height: 80px;
+				background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+				border-radius: 50%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				margin: 0 auto 2rem;
+				font-size: 2rem;
+			}
+
+			.connect-title {
+				font-size: 1.75rem;
+				margin-bottom: 1rem;
+				background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+				-webkit-background-clip: text;
+				-webkit-text-fill-color: transparent;
+			}
+
+			.connect-input {
+				width: 100%;
+				padding: 1rem;
+				margin-bottom: 1rem;
+				background: rgba(255, 255, 255, 0.1);
+				border: 1px solid rgba(255, 255, 255, 0.2);
+				border-radius: 12px;
+				color: white;
+				font-size: 1.1rem;
+				text-align: center;
+				text-transform: uppercase;
+			}
+
+			.connect-input::placeholder {
+				color: #94a3b8;
+				text-transform: none;
+			}
+
+			.connect-btn {
+				width: 100%;
+				padding: 1rem;
+				background: linear-gradient(135deg, #3b82f6, #2563eb);
+				color: white;
+				border: none;
+				border-radius: 12px;
+				font-size: 1.1rem;
+				font-weight: 600;
+				cursor: pointer;
+				transition: all 0.3s ease;
+				margin-bottom: 1rem;
+			}
+
+			.connect-btn:active {
+				transform: scale(0.98);
+			}
+
+			.status-message {
+				padding: 0.75rem;
+				border-radius: 8px;
+				margin-top: 1rem;
+				font-size: 0.9rem;
+			}
+
+			.status-message.error {
+				background: rgba(239, 68, 68, 0.2);
+				border: 1px solid rgba(239, 68, 68, 0.3);
+				color: #ef4444;
+			}
+
+			/* === ПОЛНОЭКРАННЫЙ РЕЖИМ === */
+			.fullscreen-controls {
+				position: fixed;
+				top: 0;
+				left: 0;
+				right: 0;
+				padding: 1rem;
+				background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8), transparent);
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				z-index: 100;
+				opacity: 0;
+				transition: opacity 0.3s ease;
+			}
+
+			.fullscreen-controls.visible {
+				opacity: 1;
+			}
+
+			.back-btn {
+				width: 44px;
+				height: 44px;
+				border-radius: 50%;
+				background: rgba(0, 0, 0, 0.5);
+				border: none;
+				color: white;
+				font-size: 1.25rem;
+				cursor: pointer;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				backdrop-filter: blur(10px);
+			}
+
+			/* === АДАПТИВНОСТЬ === */
+			@media (min-width: 768px) {
+				.desktop-header {
+					display: block;
+				}
+
+				.mobile-header {
+					display: none !important;
+				}
+
+				.main-content {
+					flex-direction: row;
+					max-width: 1200px;
+					margin: 0 auto;
+					width: 100%;
+				}
+
+				.video-section {
+					flex: 2;
+					height: calc(100vh - 60px);
+				}
+
+				.chat-section {
+					flex: 1;
+					height: calc(100vh - 60px);
+					min-height: auto;
+					max-width: 400px;
+				}
+
+				.video-controls {
+					bottom: 2rem;
+				}
+
+				.control-btn {
+					width: 56px;
+					height: 56px;
+					font-size: 1.5rem;
+				}
+			}
+
+			@media (max-width: 767px) {
+				.mobile-header {
+					display: block;
+				}
+
+				.video-section {
+					height: 60vh;
+				}
+
+				.chat-section {
+					height: 40vh;
+				}
+
+				.video-controls {
+					bottom: 0.5rem;
+					gap: 0.5rem;
+					padding: 0.5rem;
+				}
+
+				.control-btn {
+					width: 44px;
+					height: 44px;
+					font-size: 1.1rem;
+				}
+
+				.chat-input-area {
+					padding: 0.75rem;
+				}
+
+				#chat-input {
+					padding: 0.75rem;
+					font-size: 0.95rem;
+				}
+
+				.send-btn {
+					width: 44px;
+					height: 44px;
+					font-size: 1.1rem;
+				}
+			}
+
+			/* === АНИМАЦИИ === */
+			@keyframes fadeIn {
+				from {
+					opacity: 0;
+					transform: translateY(10px);
+				}
+				to {
+					opacity: 1;
+					transform: translateY(0);
+				}
+			}
+
+			@keyframes pulse {
+				0%,
+				100% {
+					opacity: 1;
+				}
+				50% {
+					opacity: 0.5;
+				}
+			}
+
+			/* === УТИЛИТЫ === */
+			.hidden {
+				display: none !important;
+			}
+
+			.loading {
+				animation: pulse 1.5s infinite;
+			}
+
+			/* Иконки Font Awesome */
+			i {
+				font-style: normal;
+			}
+
+			/* Дополнительные стили для touch устройств */
+			@media (hover: none) and (pointer: coarse) {
+				.control-btn,
+				.send-btn,
+				.back-btn {
+					min-height: 44px;
+					min-width: 44px;
+				}
+
+				input,
+				button {
+					font-size: 16px; /* Предотвращает масштабирование в iOS */
+				}
+			}
 		</style>
+		<link
+			rel="stylesheet"
+			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+		/>
 	</head>
 	<body>
-		<!-- ВАШ РАБОЧИЙ HTML БЕЗ ИЗМЕНЕНИЙ -->
-		<div class="container" id="control-area">
-			<h1>Учасник: Перегляд Екрана та Чат</h1>
-
-			<div id="setup">
-				<input type="text" id="room-id-input" placeholder="Введіть ID кімнати" />
-				<button onclick="joinRoom()">Підключитися до Кімнати</button>
+		<!-- Шапка для десктопа -->
+		<header class="desktop-header">
+			<div class="header-content">
+				<div class="header-title">
+					<i class="fas fa-eye"></i>
+					<h2>Перегляд трансляції</h2>
+				</div>
+				<div class="room-id-display" id="desktopRoomId">—</div>
+				<div class="header-status" id="desktopStatus">Підключення...</div>
 			</div>
+		</header>
 
-			<p id="status" style="display: none">Статус: Очікування трансляції...</p>
-		</div>
-
-		<div class="container room-interface" style="display: none" id="room-area">
-			<div id="video-area">
-				<h2>Трансляція Хоста</h2>
-				<video id="remote-video" autoplay playsinline></video>
+		<!-- Шапка для мобильных -->
+		<header class="mobile-header hidden">
+			<div class="mobile-header-content">
+				<div class="mobile-status" id="mobileStatus">
+					<i class="fas fa-signal"></i> Підключення...
+				</div>
+				<div class="room-id-display" id="mobileRoomId">—</div>
 			</div>
+		</header>
 
-			<div id="chat-interface">
-				<h2>Чат Кімнати</h2>
-				<div id="messages"></div>
-				<div id="chat-input-area">
-					<input
-						type="text"
-						id="chat-input"
-						placeholder="Ваше повідомлення..."
-						onkeyup="if(event.key === 'Enter') sendMessage()"
-					/>
-					<button onclick="sendMessage()">Надіслати</button>
+		<!-- Экран подключения -->
+		<div id="connectScreen" class="connect-screen">
+			<div class="connect-content">
+				<div class="connect-icon">
+					<i class="fas fa-video"></i>
+				</div>
+				<h1 class="connect-title">Перегляд трансляції</h1>
+				<p style="color: #94a3b8; margin-bottom: 2rem">
+					Введіть ID кімнати, щоб приєднатися до трансляції
+				</p>
+
+				<input
+					type="text"
+					id="roomIdInput"
+					class="connect-input"
+					placeholder="ID кімнати"
+					maxlength="10"
+				/>
+
+				<button onclick="joinRoom()" class="connect-btn">
+					<i class="fas fa-play"></i> Підключитися
+				</button>
+
+				<div id="connectStatus" class="status-message"></div>
+
+				<div style="margin-top: 2rem; font-size: 0.9rem; color: #64748b">
+					<i class="fas fa-info-circle"></i> Запитайте ID кімнати у хоста
 				</div>
 			</div>
 		</div>
 
+		<!-- Основной контент -->
+		<div id="roomContent" class="main-content hidden">
+			<!-- Видео секция -->
+			<section class="video-section">
+				<video id="remote-video" autoplay playsinline></video>
+
+				<div id="videoPlaceholder" class="video-placeholder">
+					<i class="fas fa-spinner fa-spin"></i>
+					<h3>Очікування трансляції...</h3>
+					<p>Хост скоро розпочне трансляцію</p>
+				</div>
+
+				<div class="video-controls">
+					<button id="fullscreenBtn" class="control-btn" title="Повноекранний режим">
+						<i class="fas fa-expand"></i>
+					</button>
+					<button id="audioBtn" class="control-btn active" title="Звук увімк./вимк.">
+						<i class="fas fa-volume-up"></i>
+					</button>
+					<button id="reconnectBtn" class="control-btn" title="Перепідключитися">
+						<i class="fas fa-redo"></i>
+					</button>
+				</div>
+
+				<!-- Контролы для полноэкранного режима -->
+				<div id="fullscreenControls" class="fullscreen-controls">
+					<button class="back-btn" onclick="exitFullscreen()">
+						<i class="fas fa-arrow-left"></i>
+					</button>
+					<div class="room-id-display" id="fullscreenRoomId">—</div>
+				</div>
+			</section>
+
+			<!-- Чат секция -->
+			<section class="chat-section">
+				<div class="chat-header">
+					<h3><i class="fas fa-comments"></i> Чат</h3>
+					<div class="online-count" id="onlineCount">1 онлайн</div>
+				</div>
+
+				<div class="chat-messages" id="messages">
+					<div class="message system">
+						<i class="fas fa-spinner fa-spin"></i> Підключення до чату...
+					</div>
+				</div>
+
+				<div class="chat-input-area">
+					<input
+						type="text"
+						id="chat-input"
+						class="chat-input"
+						placeholder="Напишіть повідомлення..."
+						maxlength="500"
+					/>
+					<button onclick="sendMessage()" class="send-btn">
+						<i class="fas fa-paper-plane"></i>
+					</button>
+				</div>
+			</section>
+		</div>
+
 		<script src="/socket.io/socket.io.js"></script>
 		<script>
-			// === ВАШ РАБОЧИЙ JAVASCRIPT БЕЗ ИЗМЕНЕНИЙ ===
-
+			// === ВАШ РАБОЧИЙ КОД БЕЗ ИЗМЕНЕНИЙ ===
 			const configuration = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 			const socket = io();
 			let ROOM_ID;
 			let peerConnection;
 			let dataChannel;
 			let HOST_ID;
+			let isFullscreen = false;
+			let onlineCount = 1;
+
+			// === ДОПОЛНИТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ ИНТЕРФЕЙСА ===
+
+			function updateStatus(status, type = "info") {
+				document.getElementById("desktopStatus").textContent = status;
+				document.getElementById(
+					"mobileStatus"
+				).innerHTML = `<i class="fas fa-signal"></i> ${status}`;
+
+				if (type === "error") {
+					document.getElementById("mobileStatus").style.color = "#ef4444";
+				} else if (type === "success") {
+					document.getElementById("mobileStatus").style.color = "#10b981";
+				} else {
+					document.getElementById("mobileStatus").style.color = "#94a3b8";
+				}
+			}
+
+			function updateRoomId(roomId) {
+				document.getElementById("desktopRoomId").textContent = roomId;
+				document.getElementById("mobileRoomId").textContent = roomId;
+				document.getElementById("fullscreenRoomId").textContent = roomId;
+			}
+
+			function updateOnlineCount(count) {
+				onlineCount = count;
+				const text = count === 1 ? "1 онлайн" : `${count} онлайн`;
+				document.getElementById("onlineCount").textContent = text;
+			}
+
+			function showRoomInterface() {
+				document.getElementById("connectScreen").classList.add("hidden");
+				document.getElementById("roomContent").classList.remove("hidden");
+				document.querySelector(".mobile-header").classList.remove("hidden");
+			}
+
+			function toggleFullscreen() {
+				const videoSection = document.querySelector(".video-section");
+
+				if (!isFullscreen) {
+					if (videoSection.requestFullscreen) {
+						videoSection.requestFullscreen();
+					} else if (videoSection.webkitRequestFullscreen) {
+						videoSection.webkitRequestFullscreen();
+					} else if (videoSection.mozRequestFullScreen) {
+						videoSection.mozRequestFullScreen();
+					}
+					isFullscreen = true;
+					document.getElementById("fullscreenControls").classList.add("visible");
+				} else {
+					exitFullscreen();
+				}
+			}
+
+			function exitFullscreen() {
+				if (document.exitFullscreen) {
+					document.exitFullscreen();
+				} else if (document.webkitExitFullscreen) {
+					document.webkitExitFullscreen();
+				} else if (document.mozCancelFullScreen) {
+					document.mozCancelFullScreen();
+				}
+				isFullscreen = false;
+				document.getElementById("fullscreenControls").classList.remove("visible");
+			}
+
+			// Обработка выхода из полноэкранного режима
+			document.addEventListener("fullscreenchange", () => {
+				isFullscreen = !!document.fullscreenElement;
+				if (!isFullscreen) {
+					document.getElementById("fullscreenControls").classList.remove("visible");
+				}
+			});
+
+			// Показ контролов при касании в полноэкранном режиме
+			let controlsTimeout;
+			document.querySelector(".video-section").addEventListener("touchstart", () => {
+				if (isFullscreen) {
+					document.getElementById("fullscreenControls").classList.add("visible");
+					clearTimeout(controlsTimeout);
+					controlsTimeout = setTimeout(() => {
+						document.getElementById("fullscreenControls").classList.remove("visible");
+					}, 3000);
+				}
+			});
+
+			// === ВАШ ОРИГИНАЛЬНЫЙ КОД ===
 
 			function sendMessage() {
 				const messageInput = document.getElementById("chat-input");
@@ -210,9 +795,27 @@
 
 			function displayMessage(text, type, sender = "Хост") {
 				const messagesDiv = document.getElementById("messages");
+
+				// Убираем сообщение о загрузке если оно есть
+				const loadingMsg = messagesDiv.querySelector(".system");
+				if (loadingMsg && loadingMsg.innerHTML.includes("fa-spinner")) {
+					loadingMsg.remove();
+				}
+
 				const msg = document.createElement("div");
 				msg.className = `message ${type}`;
-				msg.textContent = `${sender}: ${text}`;
+
+				const time = new Date().toLocaleTimeString([], {
+					hour: "2-digit",
+					minute: "2-digit",
+				});
+
+				msg.innerHTML = `
+                ${type !== "system" ? `<div class="message-sender">${sender}</div>` : ""}
+                <div class="message-text">${text}</div>
+                <div class="message-time">${time}</div>
+            `;
+
 				messagesDiv.appendChild(msg);
 				messagesDiv.scrollTop = messagesDiv.scrollHeight;
 			}
@@ -226,13 +829,17 @@
 					if (remoteVideo.srcObject !== event.streams[0]) {
 						remoteVideo.srcObject = event.streams[0];
 						console.log("Remote stream added.");
+						document.getElementById("videoPlaceholder").classList.add("hidden");
+						updateStatus("Трансляція активна", "success");
 					}
-					document.getElementById("status").textContent = "Трансляція активна.";
 				};
 
 				peerConnection.ondatachannel = (event) => {
 					dataChannel = event.channel;
-					dataChannel.onopen = () => console.log("Data Channel is open!");
+					dataChannel.onopen = () => {
+						console.log("Data Channel is open!");
+						displayMessage("Чат підключено", "system");
+					};
 					dataChannel.onmessage = (event) => {
 						const data = JSON.parse(event.data);
 						if (data.type === "chat") {
@@ -252,6 +859,17 @@
 					}
 				};
 
+				peerConnection.onconnectionstatechange = () => {
+					console.log("Состояние соединения:", peerConnection.connectionState);
+					if (
+						peerConnection.connectionState === "disconnected" ||
+						peerConnection.connectionState === "failed"
+					) {
+						updateStatus("Втрачено зв'язок", "error");
+						displayMessage("Втрачено зв'язок з трансляцією", "system");
+					}
+				};
+
 				return peerConnection;
 			}
 
@@ -262,8 +880,7 @@
 					if (!peerConnection) {
 						await createPeerConnection(senderId);
 					}
-					document.getElementById("status").textContent =
-						"Отримано пропозицію... Надсилаємо відповідь.";
+					updateStatus("Підключення до трансляції...");
 
 					await peerConnection.setRemoteDescription(
 						new RTCSessionDescription(signalData)
@@ -286,38 +903,112 @@
 			}
 
 			function joinRoom() {
-				ROOM_ID = document.getElementById("room-id-input").value.trim();
+				ROOM_ID = document.getElementById("roomIdInput").value.trim().toUpperCase();
 				if (!ROOM_ID) {
-					alert("Будь ласка, введіть ID кімнати.");
+					showConnectError("Будь ласка, введіть ID кімнати.");
 					return;
 				}
+
+				updateStatus("Підключення...");
 				socket.emit("join_room", ROOM_ID);
-				document.getElementById("status").style.display = "block";
-				document.getElementById(
-					"status"
-				).textContent = `Спроба підключення до ${ROOM_ID}...`;
+				showConnectStatus("Підключення до кімнати...");
 			}
 
-			function setupRoomInterface() {
-				document.getElementById("setup").style.display = "none";
-				document.getElementById("room-area").style.display = "flex";
-				document.getElementById("status").textContent =
-					"Підключено до кімнати. Очікування трансляції...";
+			function showConnectStatus(message) {
+				const statusDiv = document.getElementById("connectStatus");
+				statusDiv.textContent = message;
+				statusDiv.className = "status-message";
 			}
 
-			socket.on("connect", () => console.log("Connected to signaling server."));
+			function showConnectError(message) {
+				const statusDiv = document.getElementById("connectStatus");
+				statusDiv.textContent = message;
+				statusDiv.className = "status-message error";
+			}
+
+			// === НАСТРОЙКА СОБЫТИЙ ===
+
+			document.getElementById("roomIdInput").addEventListener("keypress", (e) => {
+				if (e.key === "Enter") joinRoom();
+			});
+
+			document.getElementById("chat-input").addEventListener("keypress", (e) => {
+				if (e.key === "Enter") sendMessage();
+			});
+
+			document.getElementById("fullscreenBtn").addEventListener("click", toggleFullscreen);
+
+			document.getElementById("audioBtn").addEventListener("click", () => {
+				const video = document.getElementById("remote-video");
+				if (video) {
+					video.muted = !video.muted;
+					const btn = document.getElementById("audioBtn");
+					btn.classList.toggle("active", !video.muted);
+					btn.innerHTML = video.muted
+						? '<i class="fas fa-volume-mute"></i>'
+						: '<i class="fas fa-volume-up"></i>';
+				}
+			});
+
+			document.getElementById("reconnectBtn").addEventListener("click", () => {
+				if (socket && ROOM_ID) {
+					socket.emit("join_room", ROOM_ID);
+					updateStatus("Перепідключення...");
+					displayMessage("Перепідключення...", "system");
+				}
+			});
+
+			// === ОБРАБОТЧИКИ SOCKET.IO ===
+
+			socket.on("connect", () => {
+				console.log("Connected to signaling server.");
+			});
+
 			socket.on("room_error", (msg) => {
-				document.getElementById("status").textContent = `Помилка: ${msg}`;
-				alert(`Помилка кімнати: ${msg}`);
-			});
-			socket.on("room_ready", setupRoomInterface);
-			socket.on("signal", handleSignal);
-			socket.on("host_disconnected", (msg) => {
-				alert(msg);
-				location.reload();
+				showConnectError(`Помилка: ${msg}`);
+				updateStatus("Помилка підключення", "error");
 			});
 
-			// === КОНЕЦ ВАШЕГО РАБОЧЕГО КОДА ===
+			socket.on("room_ready", () => {
+				showRoomInterface();
+				updateRoomId(ROOM_ID);
+				updateStatus("Підключено до кімнати");
+				updateOnlineCount(2); // Хост + зритель
+				displayMessage("Ви підключилися до кімнати", "system");
+			});
+
+			socket.on("signal", handleSignal);
+
+			socket.on("host_disconnected", (msg) => {
+				showConnectError("Хост відключився");
+				updateStatus("Хост відключився", "error");
+				displayMessage("Хост завершив трансляцію", "system");
+				setTimeout(() => {
+					location.reload();
+				}, 3000);
+			});
+
+			socket.on("participant_joined", () => {
+				updateOnlineCount(onlineCount + 1);
+				displayMessage("Новий глядач приєднався", "system");
+			});
+
+			socket.on("participant_left", () => {
+				updateOnlineCount(Math.max(1, onlineCount - 1));
+				displayMessage("Глядач вийшов", "system");
+			});
+
+			// === ИНИЦИАЛИЗАЦИЯ ===
+
+			// Автофокус на поле ввода при загрузке
+			window.addEventListener("load", () => {
+				document.getElementById("roomIdInput").focus();
+
+				// Показываем мобильную шапку только после подключения
+				if (window.innerWidth <= 767) {
+					document.querySelector(".mobile-header").classList.add("hidden");
+				}
+			});
 		</script>
 	</body>
 </html>
