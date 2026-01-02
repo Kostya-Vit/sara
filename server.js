@@ -52,6 +52,18 @@ const rooms = new Map();
 io.on("connection", (socket) => {
 	console.log(`✅ User connected: ${socket.id}`);
 
+	const isMobile = socket.handshake.headers["user-agent"]?.includes("Mobile");
+
+	if (isMobile) {
+		console.log(`📱 Мобильное устройство подключилось: ${socket.id}`);
+
+		// Отправляем оптимизированную конфигурацию
+		socket.emit("mobile_config", {
+			message: "Mobile device detected",
+			optimizeForMobile: true,
+		});
+	}
+
 	// Приветственное сообщение
 	socket.emit("welcome", {
 		message: "Connected to WebRTC Server",
