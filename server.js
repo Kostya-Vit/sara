@@ -61,7 +61,7 @@ io.on("connection", (socket) => {
 		const roomData = rooms.get(data.roomId);
 		if (!roomData) return;
 
-		// data = { roomId, targetId, signalType, data }
+		data = { roomId, targetId, signalType, data };
 
 		if (data.targetId) {
 			// Надсилаємо конкретному піру (від Хоста до Учасника або навпаки)

@@ -756,7 +756,6 @@
 				.fs-chat-container {
 					top: 4.5rem;
 					left: 1rem;
-					width: 65%;
 				}
 			}
 
@@ -1153,14 +1152,13 @@
 
 				const senderName = type === "local" ? "Я" : sender;
 
-				// Структура для имитации GTA V: Ник + Текст
 				fsMsg.innerHTML = `
-			<div class="message-sender">${senderName}:</div>
-			<div class="message-text">${text}</div>
-		`;
+					<div class="message-sender">${senderName}:</div>
+					<div class="message-text">${text}</div>
+				`;
 
 				// Ограничиваем количество сообщений (например, последние 10)
-				if (fsMessagesDiv.children.length >= 10) {
+				if (fsMessagesDiv.children.length >= 6) {
 					fsMessagesDiv.removeChild(fsMessagesDiv.children[0]);
 				}
 
