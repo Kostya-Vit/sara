@@ -23,7 +23,14 @@ const rooms = new Map();
 io.on("connection", (socket) => {
 	console.log(`User connected: ${socket.id}`);
 
-	// --- Логіка Кімнат ---
+	const userAgent = socket.handshake.headers["user-agent"] || "";
+	const isMobile = /mobile/i.test(userAgent);
+
+	// Отправляем оптимизированную конфигурацию для мобильных
+	socket.emit("config", {
+		iceServers: getIceServers(isMobile),
+		isMobile: isMobile,
+	});
 
 	socket.on("create_room", (roomId) => {
 		if (rooms.has(roomId)) {
@@ -58,19 +65,17 @@ io.on("connection", (socket) => {
 	// --- Логіка Сигналізації WebRTC ---
 
 	socket.on("signal", (data) => {
-		const roomData = rooms.get(data.roomId);
-		if (!roomData) return;
+		console.log("📨 Получен сигнал:", data);
 
-		// Исправьте деструктуризацию
-		const { roomId, targetId, signalType, data: signalData } = data;
-
-		if (targetId) {
-			io.to(targetId).emit("signal", {
-				senderId: socket.id,
-				signalType,
-				data: signalData,
-			});
+		// Проверяем, что данные корректны
+		if (!data || !data.signalType) {
+			console.error("❌ Некорректные данные сигнала:", data);
+			return;
 		}
+
+		handleSignal(data).catch((error) => {
+			console.error("❌ Ошибка обработки сигнала:", error);
+		});
 	});
 
 	// --- Обробка відключення ---
@@ -97,6 +102,34 @@ io.on("connection", (socket) => {
 		}
 	});
 });
+
+function getIceServers(isMobile = false) {
+	const iceServers = [
+		{ urls: "stun:stun.l.google.com:19302" },
+		{ urls: "stun:stun1.l.google.com:19302" },
+		{ urls: "stun:stun2.l.google.com:19302" },
+		{ urls: "stun:stun3.l.google.com:19302" },
+		{ urls: "stun:stun4.l.google.com:19302" },
+		{ urls: "stun:stun.voiparound.com" },
+		{ urls: "stun:stun.voipbuster.com" },
+		{ urls: "stun:stun.voipstunt.com" },
+	];
+
+	// Для мобильных добавляем дополнительные серверы
+	if (isMobile) {
+		iceServers.push(
+			{ urls: "turn:turn.bistri.com:80?transport=udp" },
+			{ urls: "turn:turn.bistri.com:80?transport=tcp" },
+			{
+				urls: "turn:turn.anyfirewall.com:443?transport=tcp",
+				username: "webrtc",
+				credential: "webrtc",
+			}
+		);
+	}
+
+	return iceServers;
+}
 
 server.listen(PORT, "0.0.0.0", () => {
 	console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);

@@ -877,6 +877,14 @@
 					<button id="audioBtn" class="control-btn active" title="Звук увімк./вимк.">
 						<i class="fas fa-volume-up"></i>
 					</button>
+					<button
+						id="reconnectBtn"
+						class="control-btn"
+						title="Перепідключитися"
+						onclick="reconnect()"
+					>
+						<i class="fas fa-redo"></i>
+					</button>
 				</div>
 
 				<div id="fullscreenControls" class="fullscreen-controls">
@@ -950,15 +958,36 @@
 			// === DOM Elements & Globals ===
 			const configuration = {
 				iceServers: [
+					// Публичные STUN серверы
 					{ urls: "stun:stun.l.google.com:19302" },
 					{ urls: "stun:stun1.l.google.com:19302" },
 					{ urls: "stun:stun2.l.google.com:19302" },
 					{ urls: "stun:stun3.l.google.com:19302" },
 					{ urls: "stun:stun4.l.google.com:19302" },
+
+					// Альтернативные STUN серверы (работают лучше на мобильных)
 					{ urls: "stun:stun.voiparound.com" },
 					{ urls: "stun:stun.voipbuster.com" },
 					{ urls: "stun:stun.voipstunt.com" },
+					{ urls: "stun:stun.ekiga.net" },
+					{ urls: "stun:stun.sipgate.net" },
+
+					// Для мобильных устройств
+					{
+						urls: [
+							"turn:turn.bistri.com:80",
+							"turn:turn.anyfirewall.com:443?transport=tcp",
+						],
+						username: "homeo",
+						credential: "homeo",
+					},
 				],
+
+				// Оптимизации для мобильных
+				iceCandidatePoolSize: 5,
+				iceTransportPolicy: "all",
+				bundlePolicy: "max-bundle",
+				rtcpMuxPolicy: "require",
 			};
 			const socket = io();
 			let ROOM_ID;
@@ -1177,6 +1206,91 @@
 				fsMessagesDiv.scrollTop = fsMessagesDiv.scrollHeight;
 			}
 
+			async function playVideo(videoElement) {
+				try {
+					// Для мобильных устройств
+					videoElement.setAttribute("playsinline", "true");
+					videoElement.setAttribute("webkit-playsinline", "true");
+
+					// Пытаемся воспроизвести
+					await videoElement.play();
+					console.log("✅ Видео воспроизводится");
+
+					// Скрываем любые оверлеи автовоспроизведения
+					const autoplayOverlay = document.getElementById("autoplay-overlay");
+					if (autoplayOverlay) {
+						autoplayOverlay.remove();
+					}
+				} catch (error) {
+					console.warn("⚠️ Автовоспроизведение заблокировано:", error);
+
+					// Показываем кнопку для ручного запуска
+					showAutoplayPrompt();
+				}
+			}
+
+			function showAutoplayPrompt() {
+				// Проверяем, не добавлен ли уже оверлей
+				if (document.getElementById("autoplay-overlay")) {
+					return;
+				}
+
+				const overlay = document.createElement("div");
+				overlay.id = "autoplay-overlay";
+				overlay.style.cssText = `
+					position: fixed;
+					top: 0;
+					left: 0;
+					right: 0;
+					bottom: 0;
+					background: rgba(0,0,0,0.7);
+					display: flex;
+					flex-direction: column;
+					justify-content: center;
+					align-items: center;
+					z-index: 10000;
+					color: white;
+					text-align: center;
+					padding: 20px;
+				`;
+
+				overlay.innerHTML = `
+					<div style="max-width: 400px; background: #1e293b; padding: 30px; border-radius: 15px;">
+						<h3 style="margin-bottom: 15px; color: #3b82f6;">🎬 Включите трансляцію</h3>
+						<p style="margin-bottom: 20px; color: #94a3b8;">
+							Браузер потребував дозволу на автовідтворення відео.
+							Натисніть кнопку нижче, щоб почати перегляд.
+						</p>
+						<button onclick="startVideoPlayback()" style="
+							background: linear-gradient(135deg, #3b82f6, #2563eb);
+							color: white;
+							border: none;
+							padding: 15px 30px;
+							border-radius: 8px;
+							font-size: 16px;
+							font-weight: bold;
+							cursor: pointer;
+							width: 100%;
+						">
+							▶️ Почати перегляд
+						</button>
+					</div>
+				`;
+
+				document.body.appendChild(overlay);
+
+				window.startVideoPlayback = async () => {
+					const video = document.getElementById("remote-video");
+					try {
+						await video.play();
+						overlay.remove();
+						console.log("✅ Видео запущено вручную");
+					} catch (error) {
+						console.error("❌ Ошибка ручного запуска:", error);
+					}
+				};
+			}
+
 			function copyChatMessagesToFullscreen() {
 				fsMessagesDiv.innerHTML = ""; // Очищаем
 				// Выбираем только не-системные сообщения
@@ -1203,95 +1317,290 @@
 			}
 
 			// === WEB RTC И SOCKET.IO ЛОГИКА (ОБНОВЛЕН ОБРАБОТЧИК dataChannel.onmessage) ===
+			let pendingIceCandidates = [];
 
 			async function createPeerConnection(hostId) {
-				peerConnection = new RTCPeerConnection(configuration);
-				HOST_ID = hostId;
+				console.log("🔄 Создание нового PeerConnection...");
 
-				peerConnection.ontrack = (event) => {
-					const remoteVideo = document.getElementById("remote-video");
-					if (remoteVideo.srcObject !== event.streams[0]) {
-						remoteVideo.srcObject = event.streams[0];
-						console.log("Remote stream added.");
-						document.getElementById("videoPlaceholder").classList.add("hidden");
-						updateStatus("Трансляція активна", "success");
-					}
-				};
-
-				peerConnection.ondatachannel = (event) => {
-					dataChannel = event.channel;
-					dataChannel.onopen = () => {
-						console.log("Data Channel is open!");
-						displayMessage("Чат підключено", "system");
+				try {
+					const configuration = {
+						iceServers: [
+							{ urls: "stun:stun.l.google.com:19302" },
+							{ urls: "stun:stun1.l.google.com:19302" },
+							{ urls: "stun:stun2.l.google.com:19302" },
+							{ urls: "stun:stun3.l.google.com:19302" },
+							{ urls: "stun:stun4.l.google.com:19302" },
+						],
+						iceCandidatePoolSize: 10,
 					};
-					dataChannel.onmessage = (event) => {
-						const data = JSON.parse(event.data);
-						if (data.type === "chat") {
-							displayMessage(data.message, "remote", "Хост");
 
-							// *** ЛОГИКА УВЕДОМЛЕНИЯ ***
-							const fsChatContainer = document.querySelector(".fs-chat-container");
-							// Если в полноэкранном режиме И чат скрыт
-							if (
-								document.fullscreenElement &&
-								fsChatContainer.classList.contains("hidden")
-							) {
-								fsChatToggleBtn.classList.add("has-new-message");
+					peerConnection = new RTCPeerConnection(configuration);
+					HOST_ID = hostId;
+
+					console.log("✅ PeerConnection создан");
+
+					// Обработчик входящих медиа потоков
+					peerConnection.ontrack = (event) => {
+						console.log("🎬 Получен удаленный медиа поток");
+						const remoteVideo = document.getElementById("remote-video");
+
+						if (remoteVideo.srcObject !== event.streams[0]) {
+							remoteVideo.srcObject = event.streams[0];
+							console.log("✅ Видео поток установлен");
+
+							// Скрываем плейсхолдер
+							const placeholder = document.getElementById("videoPlaceholder");
+							if (placeholder) {
+								placeholder.classList.add("hidden");
 							}
+
+							// Пытаемся воспроизвести видео
+							playVideo(remoteVideo);
+
+							updateStatus("Трансляція активна", "success");
 						}
 					};
-				};
 
-				peerConnection.onicecandidate = ({ candidate }) => {
-					if (candidate) {
-						socket.emit("signal", {
-							roomId: ROOM_ID,
-							targetId: HOST_ID,
-							signalType: "ice",
-							data: candidate,
-						});
+					// Обработчик Data Channel для чата
+					peerConnection.ondatachannel = (event) => {
+						dataChannel = event.channel;
+
+						dataChannel.onopen = () => {
+							console.log("✅ Data Channel открыт");
+							displayMessage("Чат підключено", "system");
+
+							// Обрабатываем ожидающие ICE кандидаты
+							if (pendingIceCandidates.length > 0) {
+								console.log(
+									`📨 Добавляем ${pendingIceCandidates.length} ожидающих ICE кандидатов`
+								);
+								pendingIceCandidates.forEach((candidate) => {
+									peerConnection
+										.addIceCandidate(new RTCIceCandidate(candidate))
+										.catch((e) =>
+											console.error(
+												"Ошибка добавления отложенного кандидата:",
+												e
+											)
+										);
+								});
+								pendingIceCandidates = [];
+							}
+						};
+
+						dataChannel.onmessage = (event) => {
+							try {
+								const data = JSON.parse(event.data);
+								if (data.type === "chat") {
+									displayMessage(data.message, "remote", "Хост");
+								}
+							} catch (error) {
+								console.error("❌ Ошибка парсинга сообщения:", error);
+							}
+						};
+
+						dataChannel.onerror = (error) => {
+							console.error("❌ Data Channel ошибка:", error);
+						};
+					};
+
+					// Обработчик ICE кандидатов
+					peerConnection.onicecandidate = ({ candidate }) => {
+						if (candidate) {
+							console.log("📤 Отправляем ICE кандидат хосту");
+							socket.emit("signal", {
+								roomId: ROOM_ID,
+								targetId: HOST_ID,
+								signalType: "ice",
+								data: candidate,
+							});
+						} else {
+							console.log("✅ Все ICE кандидаты собраны");
+						}
+					};
+
+					// Отслеживание состояния соединения
+					peerConnection.onconnectionstatechange = () => {
+						console.log("🔌 Состояние соединения:", peerConnection.connectionState);
+
+						switch (peerConnection.connectionState) {
+							case "connected":
+								updateStatus("Підключено до трансляції", "success");
+								break;
+							case "disconnected":
+								updateStatus("Втрачено зв'язок", "warning");
+								displayMessage("Втрачено зв'язок з трансляцією", "system");
+								break;
+							case "failed":
+								updateStatus("Помилка з'єднання", "error");
+								displayMessage("Помилка з'єднання", "system");
+								// Пробуем переподключиться
+								setTimeout(() => {
+									if (socket && ROOM_ID) {
+										reconnect();
+									}
+								}, 3000);
+								break;
+							case "closed":
+								console.log("🔒 Соединение закрыто");
+								break;
+						}
+					};
+
+					// Обработчик ICE соединения
+					peerConnection.oniceconnectionstatechange = () => {
+						console.log("🌐 ICE состояние:", peerConnection.iceConnectionState);
+					};
+
+					return peerConnection;
+				} catch (error) {
+					console.error("❌ Ошибка создания PeerConnection:", error);
+					throw error;
+				}
+			}
+
+			function reconnect() {
+				if (!socket || !ROOM_ID) {
+					console.error("❌ Невозможно переподключиться: нет данных комнаты");
+					return;
+				}
+
+				console.log("🔄 Попытка переподключения...");
+				updateStatus("Перепідключення...", "info");
+				displayMessage("Перепідключення до трансляції...", "system");
+
+				// Закрываем текущее соединение
+				if (peerConnection) {
+					peerConnection.close();
+					peerConnection = null;
+				}
+
+				// Сбрасываем данные
+				pendingIceCandidates = [];
+
+				// Показываем плейсхолдер
+				const placeholder = document.getElementById("videoPlaceholder");
+				if (placeholder) {
+					placeholder.classList.remove("hidden");
+				}
+
+				// Пытаемся переподключиться к комнате
+				socket.emit("join_room", ROOM_ID, (response) => {
+					if (response && response.success) {
+						console.log("✅ Переподключение инициировано");
+					} else {
+						console.error("❌ Ошибка переподключения:", response);
+						showStatus(`Помилка: ${response?.error || "невідома помилка"}`, "error");
 					}
-				};
+				});
+			}
 
-				peerConnection.onconnectionstatechange = () => {
-					console.log("Состояние соединения:", peerConnection.connectionState);
-					if (
-						peerConnection.connectionState === "disconnected" ||
-						peerConnection.connectionState === "failed"
-					) {
-						updateStatus("Втрачено зв'язок", "error");
-						displayMessage("Втрачено зв'язок з трансляцією", "system");
+			function restartIce() {
+				if (peerConnection) {
+					peerConnection.restartIce();
+				}
+			}
+
+			let connectionCheckInterval;
+			let lastConnectionTime = Date.now();
+
+			function startConnectionMonitor() {
+				connectionCheckInterval = setInterval(() => {
+					if (peerConnection) {
+						const state = peerConnection.iceConnectionState;
+						const timeDiff = Date.now() - lastConnectionTime;
+
+						if (state === "connected" || state === "completed") {
+							lastConnectionTime = Date.now();
+						} else if (state === "disconnected" && timeDiff > 5000) {
+							console.log("⚠️ Соединение потеряно, пытаемся переподключиться...");
+							reconnectStream();
+						}
 					}
-				};
+				}, 1000);
+			}
 
-				return peerConnection;
+			function reconnectStream() {
+				if (socket && currentRoomId) {
+					showStatus("Переподключение...", "warning");
+
+					// Закрываем старое соединение
+					if (peerConnection) {
+						peerConnection.close();
+					}
+
+					// Переподключаемся к комнате
+					socket.emit("join_room", currentRoomId, (response) => {
+						if (response.success) {
+							showStatus("Переподключено", "success");
+						}
+					});
+				}
 			}
 
 			async function handleSignal(data) {
 				const { senderId, signalType, data: signalData } = data;
 
+				console.log(`📡 Получен сигнал ${signalType} от ${senderId}`);
+
 				if (signalType === "sdp" && signalData.type === "offer") {
-					if (!peerConnection) {
-						await createPeerConnection(senderId);
+					try {
+						// Создаем или переиспользуем peerConnection
+						if (!peerConnection) {
+							console.log("🔄 Создаем новое PeerConnection...");
+							peerConnection = await createPeerConnection(senderId);
+						} else {
+							console.log("🔄 Используем существующее PeerConnection");
+							// Если соединение уже установлено, закрываем и создаем новое
+							if (peerConnection.signalingState !== "stable") {
+								peerConnection.close();
+								peerConnection = await createPeerConnection(senderId);
+							}
+						}
+
+						updateStatus("Підключення до трансляції...");
+
+						// Устанавливаем удаленное описание
+						await peerConnection.setRemoteDescription(
+							new RTCSessionDescription(signalData)
+						);
+						console.log("✅ Remote description установлен");
+
+						// Создаем ответ
+						const answer = await peerConnection.createAnswer();
+						await peerConnection.setLocalDescription(answer);
+						console.log("✅ Local description установлен");
+
+						// Отправляем ответ хосту
+						socket.emit("signal", {
+							roomId: ROOM_ID,
+							targetId: senderId,
+							signalType: "sdp",
+							data: peerConnection.localDescription,
+						});
+					} catch (error) {
+						console.error("❌ Ошибка при обработке offer:", error);
+						showStatus("Помилка підключення до трансляції", "error");
+
+						// Пробуем переподключиться
+						if (peerConnection) {
+							peerConnection.close();
+							peerConnection = null;
+						}
 					}
-					updateStatus("Підключення до трансляції...");
-
-					await peerConnection.setRemoteDescription(
-						new RTCSessionDescription(signalData)
-					);
-
-					const answer = await peerConnection.createAnswer();
-					await peerConnection.setLocalDescription(answer);
-
-					socket.emit("signal", {
-						roomId: ROOM_ID,
-						targetId: senderId,
-						signalType: "sdp",
-						data: peerConnection.localDescription,
-					});
 				} else if (signalType === "ice") {
-					if (peerConnection) {
-						await peerConnection.addIceCandidate(new RTCIceCandidate(signalData));
+					try {
+						if (peerConnection && peerConnection.remoteDescription) {
+							await peerConnection.addIceCandidate(new RTCIceCandidate(signalData));
+							console.log("✅ ICE кандидат добавлен");
+						} else {
+							console.log("⚠️ ICE кандидат получен до установки remote description");
+							// Сохраняем кандидата для будущего использования
+							pendingIceCandidates = pendingIceCandidates || [];
+							pendingIceCandidates.push(signalData);
+						}
+					} catch (error) {
+						console.error("❌ Ошибка при добавлении ICE кандидата:", error);
 					}
 				}
 			}
@@ -1401,7 +1710,25 @@
 
 			// Автофокус на поле ввода при загрузке
 			window.addEventListener("load", () => {
-				document.getElementById("roomIdInput").focus();
+				const roomInput = document.getElementById("roomIdInput");
+				if (roomInput) {
+					roomInput.focus();
+
+					// Обработка Enter
+					roomInput.addEventListener("keypress", (e) => {
+						if (e.key === "Enter") {
+							joinRoom();
+						}
+					});
+				}
+
+				// Инициализация переменных
+				peerConnection = null;
+				pendingIceCandidates = [];
+				ROOM_ID = null;
+				HOST_ID = null;
+
+				console.log("✅ Клиент инициализирован");
 
 				// Показываем мобильную шапку только после подключения
 				if (window.innerWidth <= 767) {
