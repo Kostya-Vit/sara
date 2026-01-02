@@ -61,13 +61,14 @@ io.on("connection", (socket) => {
 		const roomData = rooms.get(data.roomId);
 		if (!roomData) return;
 
-		data = { roomId, targetId, signalType, data };
+		// Исправьте деструктуризацию
+		const { roomId, targetId, signalType, data: signalData } = data;
 
-		if (data.targetId) {
-			// Надсилаємо конкретному піру (від Хоста до Учасника або навпаки)
-			io.to(data.targetId).emit("signal", {
+		if (targetId) {
+			io.to(targetId).emit("signal", {
 				senderId: socket.id,
-				...data,
+				signalType,
+				data: signalData,
 			});
 		}
 	});
@@ -97,6 +98,7 @@ io.on("connection", (socket) => {
 	});
 });
 
-server.listen(PORT, () => {
-	console.log(`Server running at http://localhost:${PORT}`);
+server.listen(PORT, "0.0.0.0", () => {
+	console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
+	console.log(`🌐 WebSocket server ready at ws://0.0.0.0:${PORT}`);
 });
